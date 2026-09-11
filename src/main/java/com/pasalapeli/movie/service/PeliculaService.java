@@ -27,9 +27,9 @@ public class PeliculaService {
     public List<PeliculaDTO> listarPeliculas(String busqueda) {
         List<Pelicula> peliculas;
         if (busqueda != null && !busqueda.isBlank()) {
-            peliculas = peliculaRepository.findByTituloContainingIgnoreCase(busqueda);
+            peliculas = peliculaRepository.buscarPorTituloConFunciones(busqueda);
         } else {
-            peliculas = peliculaRepository.findAll();
+            peliculas = peliculaRepository.findAllWithFunciones();
         }
         return peliculas.stream().map(this::mapToDTO).collect(Collectors.toList());
     }
