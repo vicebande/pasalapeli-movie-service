@@ -59,6 +59,10 @@ public class FuncionService {
 
     @Transactional
     public DisponibilidadDTO descontarEntradas(Long funcionId, int cantidad) {
+        if (cantidad <= 0) {
+            throw new IllegalArgumentException("La cantidad a descontar debe ser mayor a 0");
+        }
+
         // Bloqueo pesimista para consistencia en alta concurrencia
         Funcion f = funcionRepository.findByIdForUpdate(funcionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Función no encontrada con ID: " + funcionId));

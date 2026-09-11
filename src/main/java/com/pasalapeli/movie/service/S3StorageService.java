@@ -72,8 +72,7 @@ public class S3StorageService {
 
         if (s3Enabled && s3Client != null && fileUrl.contains(bucketName)) {
             try {
-                String key = fileUrl.substring(fileUrl.indexOf(bucketName) + bucketName.length() + 1);
-                if (key.startsWith("/")) key = key.substring(1);
+                String key = extractS3Key(fileUrl);
                 log.info("Eliminando archivo de Amazon S3: {}", key);
                 DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
                         .bucket(bucketName)
@@ -96,6 +95,29 @@ public class S3StorageService {
                 log.warn("No se pudo eliminar archivo local: {}", e.getMessage());
             }
         }
+    }
+
+    private String extractS3Key(String fileUrl) {
+        try {
+            String path = java.net.URI.create(fileUrl).getPath();
+            if (path != null && !path.isBlank()) {
+                return path.startsWith("/") ? path.substring(1) : path;
+            }
+        } catch (IllegalArgumentException ignored) {
+            // Si la URL no es un URI válido, se intenta extraer la key manualmente
+        }
+        // Extrae la parte posterior al host (https://bucket.s3.region.amazonaws.com/<key>)
+        int bucketIndex = fileUrl.indexOf(bucketName);
+        if (bucketIndex >= 0) {
+            String afterBucket = fileUrl.substring(bucketIndex + bucketName.length());
+            int slashIdx = afterBucket.indexOf("/");
+            if (slashIdx >= 0) {
+                String key = afterBucket.substring(slashIdx + 1);
+                return key.startsWith("/") ? key.substring(1) : key;
+            }
+        }
+        String fallback = fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
+        return fallback;
     }
 
     private String saveLocally(MultipartFile file, String relativePath) {
