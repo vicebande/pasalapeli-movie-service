@@ -52,3 +52,29 @@ O con Docker:
 docker build -t movie-service .
 docker run -p 8082:8082 movie-service
 ```
+
+---
+
+## ☁️ Despliegue CI/CD (GitHub Actions → EC2)
+
+Este repo se despliega **solo a sí mismo** sobre una instancia **EC2 (Ubuntu 24.04)** que ya porta el stack completo. El orquestador vive en el repo [`pasalapeli-database`](https://github.com) (contiene el `docker-compose.yml` global en `/opt/pasalapeli/`).
+
+### Workflow `.github/workflows/deploy.yml`
+En cada `push` a `main`:
+1. SSH al EC2 (acción `appleboy/ssh-action`).
+2. `git pull` del código de `movie-service` en `/opt/pasalapeli/pasalapeli-movie-service`.
+3. `docker compose up -d --build movie-service`.
+4. Espera el estado `healthy` del contenedor vía `/actuator/health`.
+
+### GitHub Secrets requeridos en este repo
+| Secret | Descripción |
+|---|---|
+| `EC2_HOST` | IP pública del EC2 |
+| `EC2_USER` | Usuario SSH (usualmente `ubuntu`) |
+| `EC2_SSH_KEY` | Clave privada SSH (.pem) |
+
+### Variables de entorno en producción (definidas en el `.env` del orquestador)
+- `SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/pasalapeli_db?...`
+- `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD`
+- `AWS_S3_ENABLED=true` (o `false` para almacenamiento local persistido en volumen)
+- `AWS_S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`

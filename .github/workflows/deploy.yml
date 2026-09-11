@@ -1,0 +1,43 @@
+name: Deploy movie-service a EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build y deploy a EC2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Desplegar movie-service via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 30m
+          script: |
+            set -euo pipefail
+            COMPOSE_DIR=/opt/pasalapeli/pasalapeli-database
+            SERVICE=movie-service
+
+            echo "==> Pulling latest code"
+            cd /opt/pasalapeli/pasalapeli-movie-service
+            git pull --ff-only origin main
+
+            echo "==> Building and restarting $SERVICE"
+            cd "$COMPOSE_DIR"
+            docker compose up -d --build "$SERVICE"
+
+            echo "==> Waiting for health check..."
+            for i in $(seq 1 30); do
+              STATUS=$(docker inspect --format '{{.State.Health.Status}}' pasalapeli-movie 2>/dev/null || echo "starting")
+              echo "    [$i/30] Status: $STATUS"
+              if [ "$STATUS" = "healthy" ]; then
+                echo "==> movie-service HEALTHY"
+                break
+              fi
+              sleep 5
+            done
+            docker compose ps "$SERVICE"

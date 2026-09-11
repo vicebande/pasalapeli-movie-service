@@ -31,3 +31,13 @@ aws:
     secret-key: ${AWS_SECRET_ACCESS_KEY:}
   local-storage:
     upload-dir: ${LOCAL_UPLOAD_DIR:./uploads/peliculas}
+
+# Actuator - healthcheck para Docker
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
