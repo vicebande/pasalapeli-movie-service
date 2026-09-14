@@ -66,7 +66,7 @@ public class PeliculaController {
             @PathVariable Long id,
             @RequestParam("imagen") MultipartFile imagen) {
         String url = peliculaService.subirPortada(id, imagen);
-        return ResponseEntity.ok(Map.of("url", url, "mensaje", "Portada subida exitosamente a Amazon S3"));
+        return ResponseEntity.ok(Map.of("url", url, "mensaje", "Portada subida exitosamente"));
     }
 
     @DeleteMapping("/{id}")

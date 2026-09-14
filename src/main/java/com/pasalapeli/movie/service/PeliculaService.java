@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 public class PeliculaService {
 
     private final PeliculaRepository peliculaRepository;
-    private final S3StorageService s3StorageService;
+    private final LocalStorageService storageService;
 
     @Transactional(readOnly = true)
     public List<PeliculaDTO> listarPeliculas(String busqueda) {
@@ -44,10 +44,9 @@ public class PeliculaService {
     @Transactional
     public PeliculaDTO crearPelicula(PeliculaRequestDTO request, MultipartFile imagenFile) {
         String imagenUrl = request.getImagen();
-        if (imagenFile != null && !imagenFile.isEmpty()) {
-            imagenUrl = s3StorageService.uploadFile(imagenFile, "peliculas");
+if (imagenFile != null && !imagenFile.isEmpty()) {
+            imagenUrl = storageService.uploadFile(imagenFile, "peliculas");
         }
-
         Pelicula pelicula = Pelicula.builder()
                 .titulo(request.getTitulo())
                 .descripcion(request.getDescripcion())
@@ -75,9 +74,9 @@ public class PeliculaService {
 
         if (imagenFile != null && !imagenFile.isEmpty()) {
             if (existente.getImagen() != null) {
-                s3StorageService.deleteFile(existente.getImagen());
+                storageService.deleteFile(existente.getImagen());
             }
-            String nuevaUrl = s3StorageService.uploadFile(imagenFile, "peliculas");
+            String nuevaUrl = storageService.uploadFile(imagenFile, "peliculas");
             existente.setImagen(nuevaUrl);
         } else if (request.getImagen() != null) {
             existente.setImagen(request.getImagen());
@@ -91,7 +90,7 @@ public class PeliculaService {
         Pelicula p = peliculaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Película no encontrada con ID: " + id));
         if (p.getImagen() != null) {
-            s3StorageService.deleteFile(p.getImagen());
+            storageService.deleteFile(p.getImagen());
         }
         peliculaRepository.delete(p);
         log.info("Película eliminada con ID: {}", id);
@@ -103,9 +102,9 @@ public class PeliculaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Película no encontrada con ID: " + id));
 
         if (p.getImagen() != null) {
-            s3StorageService.deleteFile(p.getImagen());
+            storageService.deleteFile(p.getImagen());
         }
-        String nuevaUrl = s3StorageService.uploadFile(imagenFile, "peliculas");
+        String nuevaUrl = storageService.uploadFile(imagenFile, "peliculas");
         p.setImagen(nuevaUrl);
         peliculaRepository.save(p);
         return nuevaUrl;

@@ -36,7 +36,7 @@ public class Pelicula {
     private String clasificacion;
 
     @Column(length = 255)
-    private String imagen; // S3 URL o local URL
+    private String imagen; // ruta /uploads/ o URL externa
 
     @OneToMany(mappedBy = "pelicula", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonManagedReference

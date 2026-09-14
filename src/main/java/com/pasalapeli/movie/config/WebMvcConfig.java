@@ -11,7 +11,7 @@ import java.io.File;
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    @Value("${aws.local-storage.upload-dir:./uploads/peliculas}")
+    @Value("${storage.local.upload-dir:./uploads/peliculas}")
     private String uploadDir;
 
     @Override
