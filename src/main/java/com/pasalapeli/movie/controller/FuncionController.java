@@ -38,4 +38,17 @@ public class FuncionController {
     public ResponseEntity<FuncionDTO> crearFuncion(@Valid @RequestBody FuncionRequestDTO req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(funcionService.crearFuncion(req));
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<FuncionDTO> actualizarFuncion(
+            @PathVariable Long id,
+            @Valid @RequestBody FuncionRequestDTO req) {
+        return ResponseEntity.ok(funcionService.actualizarFuncion(id, req));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarFuncion(@PathVariable Long id) {
+        funcionService.eliminarFuncion(id);
+        return ResponseEntity.noContent().build();
+    }
 }

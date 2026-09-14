@@ -109,6 +109,30 @@ public class FuncionService {
         return mapToDTO(funcionRepository.save(f));
     }
 
+    @Transactional
+    public FuncionDTO actualizarFuncion(Long id, FuncionRequestDTO req) {
+        Funcion f = funcionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Función no encontrada con ID: " + id));
+
+        f.setFecha(req.getFecha());
+        f.setHora(req.getHora());
+        f.setSala(req.getSala());
+        f.setEntradasDisponibles(req.getEntradasDisponibles());
+        f.setPrecio(req.getPrecio());
+
+        Funcion actualizada = funcionRepository.save(f);
+        log.info("Función actualizada con ID: {} para película {}", id, actualizada.getPelicula().getId());
+        return mapToDTO(actualizada);
+    }
+
+    @Transactional
+    public void eliminarFuncion(Long id) {
+        Funcion f = funcionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Función no encontrada con ID: " + id));
+        funcionRepository.delete(f);
+        log.info("Función eliminada con ID: {}", id);
+    }
+
     private FuncionDTO mapToDTO(Funcion f) {
         return FuncionDTO.builder()
                 .id(f.getId())
