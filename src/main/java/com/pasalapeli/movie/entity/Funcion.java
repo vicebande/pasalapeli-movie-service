@@ -27,7 +27,7 @@ public class Funcion {
     @Column(nullable = false)
     private LocalTime hora;
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 50)
     private String sala;
 
     @Column(name = "entradas_disponibles", nullable = false)
