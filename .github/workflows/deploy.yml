@@ -22,6 +22,13 @@ jobs:
             COMPOSE_DIR=/opt/pasalapeli/pasalapeli-database
             SERVICE=movie-service
 
+            # Lock compartido entre los deploys que corren sobre EC2-APPS:
+            # serializa docker compose up para evitar conflictos de contenedor.
+            LOCKFILE=/tmp/pasalapeli-deploy.lock
+            exec 9>"$LOCKFILE"
+            flock -x -w 1800 9
+            echo "==> Lock adquirido $LOCKFILE (despliegue "$SERVICE")"
+
             echo "==> Pulling latest code"
             cd /opt/pasalapeli/pasalapeli-movie-service
             git pull --ff-only origin main
@@ -45,3 +52,4 @@ jobs:
               exit 1
             fi
             docker compose ps "$SERVICE"
+            flock -u 9
