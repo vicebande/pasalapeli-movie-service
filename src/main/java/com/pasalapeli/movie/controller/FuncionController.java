@@ -34,6 +34,13 @@ public class FuncionController {
         return ResponseEntity.ok(funcionService.descontarEntradas(id, cantidad));
     }
 
+    @PutMapping("/{id}/reponer")
+    public ResponseEntity<DisponibilidadDTO> reponerEntradas(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") int cantidad) {
+        return ResponseEntity.ok(funcionService.reponerEntradas(id, cantidad));
+    }
+
     @PostMapping
     public ResponseEntity<FuncionDTO> crearFuncion(@Valid @RequestBody FuncionRequestDTO req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(funcionService.crearFuncion(req));

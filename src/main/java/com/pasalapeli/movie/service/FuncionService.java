@@ -93,6 +93,32 @@ public class FuncionService {
     }
 
     @Transactional
+    public DisponibilidadDTO reponerEntradas(Long funcionId, int cantidad) {
+        if (cantidad <= 0) {
+            throw new IllegalArgumentException("La cantidad a reponer debe ser mayor a 0");
+        }
+
+        // Bloqueo pesimista para consistencia con compras concurrentes
+        Funcion f = funcionRepository.findByIdForUpdate(funcionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Función no encontrada con ID: " + funcionId));
+
+        f.setEntradasDisponibles(f.getEntradasDisponibles() + cantidad);
+        Funcion actualizada = funcionRepository.save(f);
+        log.info("Repuestas {} entradas para función {}. Disponibles: {}",
+                cantidad, funcionId, actualizada.getEntradasDisponibles());
+
+        return DisponibilidadDTO.builder()
+                .funcionId(actualizada.getId())
+                .peliculaId(actualizada.getPelicula().getId())
+                .peliculaTitulo(actualizada.getPelicula().getTitulo())
+                .sala(actualizada.getSala())
+                .entradasDisponibles(actualizada.getEntradasDisponibles())
+                .precio(actualizada.getPrecio())
+                .disponible(actualizada.getEntradasDisponibles() > 0)
+                .build();
+    }
+
+    @Transactional
     public FuncionDTO crearFuncion(FuncionRequestDTO req) {
         Pelicula p = peliculaRepository.findById(req.getPeliculaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Película no encontrada con ID: " + req.getPeliculaId()));
