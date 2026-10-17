@@ -1,5 +1,6 @@
 package com.pasalapeli.movie.messaging;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pasalapeli.movie.event.EventoNotificacion;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class NotificacionEventPublisher {
 
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SnsTemplate snsTemplate;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.sns.topic-arn:}")
     private String topicArn;
@@ -39,7 +41,10 @@ public class NotificacionEventPublisher {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void enviar(EventoNotificacion evento) {
         try {
-            snsTemplate.send(topicArn, MessageBuilder.withPayload(evento)
+            // Payload JSON estricto: el consumidor hace objectMapper.readValue(payload, ...).
+            // Enviar el POJO directamente hace que SnsTemplate publique toString() (ilegible).
+            String payload = objectMapper.writeValueAsString(evento);
+            snsTemplate.send(topicArn, MessageBuilder.withPayload(payload)
                     .setHeader("tipo", evento.getTipo())
                     .build());
             log.info("Evento publicado en SNS: {} (topic={})", evento.getTipo(), topicArn);
