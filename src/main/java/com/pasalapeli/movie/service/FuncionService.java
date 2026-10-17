@@ -54,6 +54,8 @@ public class FuncionService {
                 .entradasDisponibles(f.getEntradasDisponibles())
                 .precio(f.getPrecio())
                 .disponible(disponible)
+                .fecha(f.getFecha())
+                .hora(f.getHora())
                 .build();
     }
 
@@ -89,6 +91,8 @@ public class FuncionService {
                 .entradasDisponibles(actualizada.getEntradasDisponibles())
                 .precio(actualizada.getPrecio())
                 .disponible(actualizada.getEntradasDisponibles() > 0)
+                .fecha(actualizada.getFecha())
+                .hora(actualizada.getHora())
                 .build();
     }
 
@@ -122,6 +126,8 @@ public class FuncionService {
                 .entradasDisponibles(actualizada.getEntradasDisponibles())
                 .precio(actualizada.getPrecio())
                 .disponible(actualizada.getEntradasDisponibles() > 0)
+                .fecha(actualizada.getFecha())
+                .hora(actualizada.getHora())
                 .build();
     }
 

@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class EventoNotificacion {
 
-    /** PELICULA_CREADA | TICKET_PAGADO | TICKET_DEVUELTO */
+    /** PELICULA_CREADA | PELICULA_ELIMINADA | TICKET_PAGADO | TICKET_DEVUELTO */
     private String tipo;
 
     private Long usuarioId;

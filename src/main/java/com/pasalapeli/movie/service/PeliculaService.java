@@ -102,6 +102,14 @@ if (imagenFile != null && !imagenFile.isEmpty()) {
     public void eliminarPelicula(Long id) {
         Pelicula p = peliculaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Película no encontrada con ID: " + id));
+
+        // Evento asincronico: avisa a los usuarios que la pelicula dejo de estar disponible.
+        notificacionEventPublisher.publicar(EventoNotificacion.builder()
+                .tipo("PELICULA_ELIMINADA")
+                .peliculaId(p.getId())
+                .tituloPelicula(p.getTitulo())
+                .build());
+
         if (p.getImagen() != null) {
             eliminarImagenTrasCommit(p.getImagen());
         }
