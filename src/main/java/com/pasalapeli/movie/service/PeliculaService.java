@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class PeliculaService {
 
     private final PeliculaRepository peliculaRepository;
-    private final LocalStorageService storageService;
+    private final S3StorageService storageService;
     private final NotificacionEventPublisher notificacionEventPublisher;
 
     @Transactional(readOnly = true)
