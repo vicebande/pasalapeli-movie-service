@@ -19,6 +19,7 @@ public class FuncionDTO {
     private LocalTime hora;
     private String sala;
     private Integer entradasDisponibles;
+    private Integer aforo;
     private BigDecimal precio;
     private Long peliculaId;
     private String peliculaTitulo;

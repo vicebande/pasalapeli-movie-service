@@ -13,8 +13,6 @@ public interface PeliculaRepository extends JpaRepository<Pelicula, Long> {
     @Query("SELECT DISTINCT p FROM Pelicula p LEFT JOIN FETCH p.funciones WHERE LOWER(p.titulo) LIKE LOWER(CONCAT('%', :busqueda, '%'))")
     List<Pelicula> buscarPorTituloConFunciones(@Param("busqueda") String busqueda);
 
-    List<Pelicula> findByGeneroContainingIgnoreCase(String genero);
-
     @Query("SELECT DISTINCT p FROM Pelicula p LEFT JOIN FETCH p.funciones")
     List<Pelicula> findAllWithFunciones();
 }

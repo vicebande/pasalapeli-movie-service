@@ -78,9 +78,10 @@ En cada `push` a `main`:
 
 ## 🔔 Mensajería asincrónica (productor)
 
-Al crear una película, `PeliculaService` publica un evento **`PELICULA_CREADA`** en el exchange *topic* `pasalapeli.events` (RabbitMQ), que consume el **[Notification Service](https://github.com)** para avisar a los usuarios.
+Al crear una película, `PeliculaService` publica un evento **`PELICULA_CREADA`** en el topic **AWS SNS** `pasalapeli-events`, que consume el **[Notification Service](https://github.com)** (cola SQS) para avisar a los usuarios.
 
 - El envío ocurre **después de confirmar la transacción** (`@TransactionalEventListener(AFTER_COMMIT)`), por lo que no se publica nada si la transacción revierte.
-- El publisher es **best-effort**: si el broker no responde, la operación de negocio no falla (solo se registra el error).
-- Clases: `event/EventoNotificacion.java`, `messaging/NotificacionEventPublisher.java`, `config/RabbitProducerConfig.java`.
-- Variables: `SPRING_RABBITMQ_HOST=rabbitmq`, `SPRING_RABBITMQ_PORT=5672`, `SPRING_RABBITMQ_USERNAME`, `SPRING_RABBITMQ_PASSWORD`, `NOTIF_EXCHANGE` (default `pasalapeli.events`).
+- El publisher es **best-effort**: si SNS no responde, la operación de negocio no falla (solo se registra el error).
+- El atributo de mensaje `tipo` alimenta el FilterPolicy de la suscripción SNS→SQS.
+- Clases: `event/EventoNotificacion.java`, `messaging/NotificacionEventPublisher.java`.
+- Variables: `SNS_TOPIC_ARN` (salida de `scripts/setup-messaging.sh` del orquestador), `AWS_REGION` (default `us-east-1`). Credenciales via cadena por defecto (IMDS + instance profile en EC2).

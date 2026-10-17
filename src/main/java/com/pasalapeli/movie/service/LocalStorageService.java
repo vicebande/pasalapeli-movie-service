@@ -19,13 +19,19 @@ public class LocalStorageService {
     @Value("${storage.local.upload-dir:./uploads/peliculas}")
     private String localUploadDir;
 
-    public String uploadFile(MultipartFile file, String subFolder) {
+    /** Guarda el archivo con nombre plano (UUID.ext) dentro de upload-dir; sin subcarpetas. */
+    public String uploadFile(MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         String extension = "";
         if (originalFilename != null && originalFilename.contains(".")) {
             extension = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
-        String fileName = subFolder + "/" + UUID.randomUUID() + extension;
+        // Extension saneada: solo caracteres seguros
+        extension = extension.replaceAll("[^a-zA-Z0-9.]", "");
+        if (extension.length() > 10) {
+            extension = "";
+        }
+        String fileName = UUID.randomUUID() + extension;
         return saveLocally(file, fileName);
     }
 
@@ -35,7 +41,13 @@ public class LocalStorageService {
         if (fileUrl.contains("/uploads/")) {
             try {
                 String localName = fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
-                Path target = Paths.get(localUploadDir, localName);
+                Path base = Paths.get(localUploadDir).toAbsolutePath().normalize();
+                Path target = base.resolve(localName).normalize();
+                // Path containment: rechaza cualquier intento de salirse de upload-dir
+                if (!target.startsWith(base)) {
+                    log.warn("Ruta de borrado fuera del directorio permitido: {}", fileUrl);
+                    return;
+                }
                 Files.deleteIfExists(target);
             } catch (IOException e) {
                 log.warn("No se pudo eliminar archivo local: {}", e.getMessage());
@@ -43,17 +55,27 @@ public class LocalStorageService {
         }
     }
 
-    private String saveLocally(MultipartFile file, String relativePath) {
+    private Path resolveSafely(String fileName) {
+        Path base = Paths.get(localUploadDir).toAbsolutePath().normalize();
+        Path target = base.resolve(fileName).normalize();
+        if (!target.startsWith(base)) {
+            throw new IllegalStateException("Nombre de archivo inválido: " + fileName);
+        }
+        return target;
+    }
+
+    private String saveLocally(MultipartFile file, String fileName) {
         try {
             Path targetDir = Paths.get(localUploadDir);
             if (!Files.exists(targetDir)) {
                 Files.createDirectories(targetDir);
             }
-            String cleanFileName = relativePath.replace("/", "_");
-            Path targetPath = targetDir.resolve(cleanFileName);
-            Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+            Path targetPath = resolveSafely(fileName);
+            try (java.io.InputStream in = file.getInputStream()) {
+                Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            }
             log.info("Archivo guardado localmente en: {}", targetPath.toAbsolutePath());
-            return "/uploads/" + cleanFileName;
+            return "/uploads/" + fileName;
         } catch (IOException e) {
             throw new RuntimeException("Error al guardar archivo en almacenamiento local: " + e.getMessage(), e);
         }

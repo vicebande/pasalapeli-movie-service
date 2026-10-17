@@ -14,12 +14,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Value("${storage.local.upload-dir:./uploads/peliculas}")
     private String uploadDir;
 
+    @Value("${app.cors.allowed-origins:*}")
+    private String corsAllowedOrigins;
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("*")
+                .allowedOrigins(corsAllowedOrigins.split(","))
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
-                .allowedHeaders("*");
+                .allowedHeaders("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin",
+                        "X-Dev-User-Role", "X-Dev-User-Email");
     }
 
     @Override

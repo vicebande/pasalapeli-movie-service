@@ -31,6 +31,9 @@ public class FuncionRequestDTO {
     @PositiveOrZero(message = "Las entradas disponibles no pueden ser negativas")
     private Integer entradasDisponibles;
 
+    @PositiveOrZero(message = "El aforo no puede ser negativo")
+    private Integer aforo;
+
     @NotNull(message = "El precio es requerido")
     @Positive(message = "El precio debe ser mayor a cero")
     private BigDecimal precio;

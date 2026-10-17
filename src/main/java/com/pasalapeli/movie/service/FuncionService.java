@@ -102,7 +102,14 @@ public class FuncionService {
         Funcion f = funcionRepository.findByIdForUpdate(funcionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Función no encontrada con ID: " + funcionId));
 
-        f.setEntradasDisponibles(f.getEntradasDisponibles() + cantidad);
+        int nuevasDisponibles = f.getEntradasDisponibles() + cantidad;
+        if (f.getAforo() != null && f.getAforo() > 0 && nuevasDisponibles > f.getAforo()) {
+            throw new IllegalArgumentException(
+                    String.format("No se puede exceder el aforo de la sala. Disponibles: %d, a sumar: %d, aforo: %d",
+                            f.getEntradasDisponibles(), cantidad, f.getAforo()));
+        }
+
+        f.setEntradasDisponibles(nuevasDisponibles);
         Funcion actualizada = funcionRepository.save(f);
         log.info("Repuestas {} entradas para función {}. Disponibles: {}",
                 cantidad, funcionId, actualizada.getEntradasDisponibles());
@@ -123,11 +130,19 @@ public class FuncionService {
         Pelicula p = peliculaRepository.findById(req.getPeliculaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Película no encontrada con ID: " + req.getPeliculaId()));
 
+        if (funcionRepository.existsBySalaAndFechaAndHora(req.getSala(), req.getFecha(), req.getHora())) {
+            throw new IllegalArgumentException(
+                    "Ya existe una función en la sala " + req.getSala() + " el " + req.getFecha() + " a las " + req.getHora());
+        }
+
+        Integer aforo = req.getAforo() != null ? req.getAforo() : req.getEntradasDisponibles();
+
         Funcion f = Funcion.builder()
                 .fecha(req.getFecha())
                 .hora(req.getHora())
                 .sala(req.getSala())
                 .entradasDisponibles(req.getEntradasDisponibles())
+                .aforo(aforo)
                 .precio(req.getPrecio())
                 .pelicula(p)
                 .build();
@@ -140,11 +155,19 @@ public class FuncionService {
         Funcion f = funcionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Función no encontrada con ID: " + id));
 
+        if (funcionRepository.existsByIdNotAndSalaAndFechaAndHora(id, req.getSala(), req.getFecha(), req.getHora())) {
+            throw new IllegalArgumentException(
+                    "Ya existe otra función en la sala " + req.getSala() + " el " + req.getFecha() + " a las " + req.getHora());
+        }
+
         f.setFecha(req.getFecha());
         f.setHora(req.getHora());
         f.setSala(req.getSala());
-        f.setEntradasDisponibles(req.getEntradasDisponibles());
         f.setPrecio(req.getPrecio());
+        // entradasDisponibles NO se pisa: lo manejan descontar/reponer (compras y devoluciones)
+        if (req.getAforo() != null) {
+            f.setAforo(req.getAforo());
+        }
 
         Funcion actualizada = funcionRepository.save(f);
         log.info("Función actualizada con ID: {} para película {}", id, actualizada.getPelicula().getId());
@@ -166,6 +189,7 @@ public class FuncionService {
                 .hora(f.getHora())
                 .sala(f.getSala())
                 .entradasDisponibles(f.getEntradasDisponibles())
+                .aforo(f.getAforo())
                 .precio(f.getPrecio())
                 .peliculaId(f.getPelicula() != null ? f.getPelicula().getId() : null)
                 .peliculaTitulo(f.getPelicula() != null ? f.getPelicula().getTitulo() : null)

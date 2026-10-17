@@ -68,6 +68,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(org.springframework.dao.DataIntegrityViolationException ex) {
+        // Restricciones UNIQUE (sala+fecha+hora, etc.): conflicto, no error interno
+        ErrorResponse err = ErrorResponse.builder()
+                .status(HttpStatus.CONFLICT.value())
+                .error("Conflict")
+                .message("Operación viola una restricción de integridad de datos")
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(err);
+    }
+
     @ExceptionHandler({MethodArgumentTypeMismatchException.class,
             HttpMessageNotReadableException.class,
             MissingServletRequestParameterException.class})

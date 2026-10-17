@@ -5,7 +5,7 @@ import lombok.*;
 import java.math.BigDecimal;
 
 /**
- * Evento de notificacion publicado de forma asincrona hacia RabbitMQ.
+ * Evento de notificacion publicado de forma asincrona hacia AWS SNS.
  * El microservicio de notificaciones lo consume (deserializa por nombre de campo).
  */
 @Data

@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -48,7 +50,7 @@ public class PeliculaService {
     public PeliculaDTO crearPelicula(PeliculaRequestDTO request, MultipartFile imagenFile) {
         String imagenUrl = request.getImagen();
 if (imagenFile != null && !imagenFile.isEmpty()) {
-            imagenUrl = storageService.uploadFile(imagenFile, "peliculas");
+            imagenUrl = storageService.uploadFile(imagenFile);
         }
         Pelicula pelicula = Pelicula.builder()
                 .titulo(request.getTitulo())
@@ -85,9 +87,9 @@ if (imagenFile != null && !imagenFile.isEmpty()) {
 
         if (imagenFile != null && !imagenFile.isEmpty()) {
             if (existente.getImagen() != null) {
-                storageService.deleteFile(existente.getImagen());
+                eliminarImagenTrasCommit(existente.getImagen());
             }
-            String nuevaUrl = storageService.uploadFile(imagenFile, "peliculas");
+            String nuevaUrl = storageService.uploadFile(imagenFile);
             existente.setImagen(nuevaUrl);
         } else if (request.getImagen() != null) {
             existente.setImagen(request.getImagen());
@@ -101,7 +103,7 @@ if (imagenFile != null && !imagenFile.isEmpty()) {
         Pelicula p = peliculaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Película no encontrada con ID: " + id));
         if (p.getImagen() != null) {
-            storageService.deleteFile(p.getImagen());
+            eliminarImagenTrasCommit(p.getImagen());
         }
         peliculaRepository.delete(p);
         log.info("Película eliminada con ID: {}", id);
@@ -113,12 +115,29 @@ if (imagenFile != null && !imagenFile.isEmpty()) {
                 .orElseThrow(() -> new ResourceNotFoundException("Película no encontrada con ID: " + id));
 
         if (p.getImagen() != null) {
-            storageService.deleteFile(p.getImagen());
+            eliminarImagenTrasCommit(p.getImagen());
         }
-        String nuevaUrl = storageService.uploadFile(imagenFile, "peliculas");
+        String nuevaUrl = storageService.uploadFile(imagenFile);
         p.setImagen(nuevaUrl);
         peliculaRepository.save(p);
         return nuevaUrl;
+    }
+
+    /**
+     * Borra la imagen fisica solo si la transaccion se confirma: si el commit falla,
+     * el registro en BD sigue apuntando al archivo y no queda un enlace muerto.
+     */
+    private void eliminarImagenTrasCommit(String imagenUrl) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    storageService.deleteFile(imagenUrl);
+                }
+            });
+        } else {
+            storageService.deleteFile(imagenUrl);
+        }
     }
 
     private PeliculaDTO mapToDTO(Pelicula p) {
@@ -130,6 +149,7 @@ if (imagenFile != null && !imagenFile.isEmpty()) {
                     .hora(f.getHora())
                     .sala(f.getSala())
                     .entradasDisponibles(f.getEntradasDisponibles())
+                    .aforo(f.getAforo())
                     .precio(f.getPrecio())
                     .peliculaId(p.getId())
                     .peliculaTitulo(p.getTitulo())

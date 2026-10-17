@@ -33,6 +33,9 @@ public class Funcion {
     @Column(name = "entradas_disponibles", nullable = false)
     private Integer entradasDisponibles;
 
+    @Column(name = "aforo", nullable = false)
+    private Integer aforo;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal precio;
 
