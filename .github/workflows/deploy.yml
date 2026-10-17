@@ -47,7 +47,8 @@ jobs:
 
             echo "==> Pulling latest code"
             cd /opt/pasalapeli/pasalapeli-movie-service
-            git pull --ff-only origin main
+            git fetch --prune origin
+            git reset --hard origin/main
 
             echo "==> Building and restarting $SERVICE"
             cd "$COMPOSE_DIR"
