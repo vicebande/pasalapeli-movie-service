@@ -26,7 +26,15 @@ public interface FuncionRepository extends JpaRepository<Funcion, Long> {
     @Query("SELECT f FROM Funcion f WHERE f.id = :id")
     Optional<Funcion> findByIdForUpdate(@Param("id") Long id);
 
+    /**
+     * Borra solo si no quedan tickets: DELETE atómico con NOT EXISTS evita la
+     * FK RESTRICT (una violación dentro de la transacción marcaría todo el
+     * lote de la limpieza como rollback-only). Devuelve 0 filas si aún hay
+     * tickets (se reintenta en el próximo ciclo).
+     */
     @Modifying
-    @Query("DELETE FROM Funcion f WHERE f.id = :id")
+    @Query(value = "DELETE FROM Funcion WHERE id = :id "
+            + "AND NOT EXISTS (SELECT 1 FROM Ticket WHERE funcion_id = :id)",
+            nativeQuery = true)
     int eliminarPorId(@Param("id") Long id);
 }

@@ -11,7 +11,6 @@ import com.pasalapeli.movie.repository.FuncionRepository;
 import com.pasalapeli.movie.repository.PeliculaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataAccessException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -205,9 +204,11 @@ public class FuncionService {
 
     /**
      * Limpieza programada: elimina las funciones cuya proyección ya terminó
-     * (fecha + hora + duración <= ahora America/Santiago). Solo se borra si no
-     * queda ningún ticket asociado (FK RESTRICT): si aún tiene tickets, Ticket
-     * Service los purga después y este job reintenta en el próximo ciclo.
+     * (fecha + hora + duración <= ahora America/Santiago). El DELETE es
+     * condicional (solo si no quedan tickets), por lo que una FK RESTRICT ya
+     * no puede ocurrir: antes, esa violación marcaba la transacción como
+     * rollback-only y revertía el lote completo. Si aún tiene tickets, Ticket
+     * Service los purga y este job reintenta en el próximo ciclo.
      */
     @Scheduled(fixedDelayString = "${app.limpieza.intervalo-ms:300000}",
             initialDelayString = "${app.limpieza.retraso-inicial-ms:45000}")
@@ -223,11 +224,9 @@ public class FuncionService {
         int purgadas = 0;
         int pendientes = 0;
         for (Long id : expiradas) {
-            try {
-                funcionRepository.eliminarPorId(id);
+            if (funcionRepository.eliminarPorId(id) > 0) {
                 purgadas++;
-            } catch (DataAccessException e) {
-                // FK RESTRICT: la función todavía tiene tickets; se reintenta en el próximo ciclo
+            } else {
                 pendientes++;
             }
         }
