@@ -16,6 +16,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,21 +31,30 @@ public class PeliculaService {
     private final NotificacionEventPublisher notificacionEventPublisher;
 
     @Transactional(readOnly = true)
-    public List<PeliculaDTO> listarPeliculas(String busqueda) {
+    public List<PeliculaDTO> listarPeliculas(String busqueda, boolean todas) {
         List<Pelicula> peliculas;
         if (busqueda != null && !busqueda.isBlank()) {
             peliculas = peliculaRepository.buscarPorTituloConFunciones(busqueda);
         } else {
             peliculas = peliculaRepository.findAllWithFunciones();
         }
-        return peliculas.stream().map(this::mapToDTO).collect(Collectors.toList());
+        // Catálogo público: oculta películas sin funciones próximas (todas=true las muestra, p. ej. el admin)
+        return peliculas.stream()
+                .map(this::mapToDTO)
+                .filter(dto -> todas || (dto.getFunciones() != null && !dto.getFunciones().isEmpty()))
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public PeliculaDTO obtenerPorId(Long id) {
         Pelicula p = peliculaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Película no encontrada con ID: " + id));
-        return mapToDTO(p);
+        PeliculaDTO dto = mapToDTO(p);
+        // Protección de acceso directo (/pelicula/:id): sin funciones próximas no está disponible
+        if (dto.getFunciones() == null || dto.getFunciones().isEmpty()) {
+            throw new ResourceNotFoundException("Película no disponible en la cartelera con ID: " + id);
+        }
+        return dto;
     }
 
     @Transactional
@@ -151,7 +162,11 @@ if (imagenFile != null && !imagenFile.isEmpty()) {
     private PeliculaDTO mapToDTO(Pelicula p) {
         List<FuncionDTO> funcionesDto = null;
         if (p.getFunciones() != null) {
-            funcionesDto = p.getFunciones().stream().map(f -> FuncionDTO.builder()
+            // Solo funciones futuras: las ya iniciadas no se ofrecen en catálogo ni en detalle
+            LocalDateTime ahora = LocalDateTime.now(ZoneId.of("America/Santiago"));
+            funcionesDto = p.getFunciones().stream()
+                    .filter(f -> LocalDateTime.of(f.getFecha(), f.getHora()).isAfter(ahora))
+                    .map(f -> FuncionDTO.builder()
                     .id(f.getId())
                     .fecha(f.getFecha())
                     .hora(f.getHora())

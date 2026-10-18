@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Data
@@ -23,4 +24,5 @@ public class DisponibilidadDTO {
     private boolean disponible;
     private LocalDate fecha;
     private LocalTime hora;
+    private LocalDateTime finFuncion;
 }

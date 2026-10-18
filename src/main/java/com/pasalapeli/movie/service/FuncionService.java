@@ -11,9 +11,14 @@ import com.pasalapeli.movie.repository.FuncionRepository;
 import com.pasalapeli.movie.repository.PeliculaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,7 +32,10 @@ public class FuncionService {
 
     @Transactional(readOnly = true)
     public List<FuncionDTO> listarPorPelicula(Long peliculaId) {
+        // Solo funciones cuya proyección aún no comienza (catálogo público y tabla admin)
+        LocalDateTime ahora = LocalDateTime.now(ZoneId.of("America/Santiago"));
         return funcionRepository.findByPeliculaId(peliculaId).stream()
+                .filter(f -> LocalDateTime.of(f.getFecha(), f.getHora()).isAfter(ahora))
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
@@ -56,6 +64,7 @@ public class FuncionService {
                 .disponible(disponible)
                 .fecha(f.getFecha())
                 .hora(f.getHora())
+                .finFuncion(finFuncion(f))
                 .build();
     }
 
@@ -186,6 +195,46 @@ public class FuncionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Función no encontrada con ID: " + id));
         funcionRepository.delete(f);
         log.info("Función eliminada con ID: {}", id);
+    }
+
+    private LocalDateTime finFuncion(Funcion f) {
+        int duracion = f.getPelicula() != null && f.getPelicula().getDuracion() != null
+                ? f.getPelicula().getDuracion() : 0;
+        return LocalDateTime.of(f.getFecha(), f.getHora()).plusMinutes(duracion);
+    }
+
+    /**
+     * Limpieza programada: elimina las funciones cuya proyección ya terminó
+     * (fecha + hora + duración <= ahora America/Santiago). Solo se borra si no
+     * queda ningún ticket asociado (FK RESTRICT): si aún tiene tickets, Ticket
+     * Service los purga después y este job reintenta en el próximo ciclo.
+     */
+    @Scheduled(fixedDelayString = "${app.limpieza.intervalo-ms:300000}",
+            initialDelayString = "${app.limpieza.retraso-inicial-ms:45000}")
+    @Transactional
+    public void purgarFuncionesFinalizadas() {
+        LocalDateTime ahora = LocalDateTime.now(ZoneId.of("America/Santiago"));
+        List<Long> expiradas = new ArrayList<>();
+        for (Funcion f : funcionRepository.findAll()) {
+            if (!finFuncion(f).isAfter(ahora)) {
+                expiradas.add(f.getId());
+            }
+        }
+        int purgadas = 0;
+        int pendientes = 0;
+        for (Long id : expiradas) {
+            try {
+                funcionRepository.eliminarPorId(id);
+                purgadas++;
+            } catch (DataAccessException e) {
+                // FK RESTRICT: la función todavía tiene tickets; se reintenta en el próximo ciclo
+                pendientes++;
+            }
+        }
+        if (purgadas > 0 || pendientes > 0) {
+            log.info("Limpieza: {} función(es) finalizada(s) eliminadas, {} aún con tickets (pendientes).",
+                    purgadas, pendientes);
+        }
     }
 
     private FuncionDTO mapToDTO(Funcion f) {

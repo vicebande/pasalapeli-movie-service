@@ -25,8 +25,10 @@ public class PeliculaController {
     private final FuncionService funcionService;
 
     @GetMapping
-    public ResponseEntity<List<PeliculaDTO>> listarPeliculas(@RequestParam(required = false) String busqueda) {
-        return ResponseEntity.ok(peliculaService.listarPeliculas(busqueda));
+    public ResponseEntity<List<PeliculaDTO>> listarPeliculas(
+            @RequestParam(required = false) String busqueda,
+            @RequestParam(required = false, defaultValue = "false") boolean todas) {
+        return ResponseEntity.ok(peliculaService.listarPeliculas(busqueda, todas));
     }
 
     @GetMapping("/{id}")
