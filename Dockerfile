@@ -7,6 +7,10 @@ RUN apk add --no-cache maven && mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/movie-service-0.0.1-SNAPSHOT.jar app.jar
+RUN addgroup -S app && adduser -S app -G app \
+    && mkdir -p /app/uploads \
+    && chown -R app:app /app
+USER app
 EXPOSE 8082
 HEALTHCHECK --interval=20s --timeout=5s --start-period=30s --retries=3 \
   CMD wget -q -O /dev/null http://localhost:8082/actuator/health || exit 1
