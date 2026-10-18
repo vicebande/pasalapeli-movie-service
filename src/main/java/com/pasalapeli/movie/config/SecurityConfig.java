@@ -20,6 +20,7 @@ import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -62,6 +63,14 @@ public class SecurityConfig {
     @Value("${app.cors.allowed-origins:*}")
     private String corsAllowedOrigins;
 
+    @PostConstruct
+    void warnIfDemoMode() {
+        if (!azureEnabled) {
+            log.warn("AZURE_AUTH_ENABLED=false: MODO DEMO ACTIVO — las cabeceras X-Dev-User-* son confiables. "
+                    + "NO usar en produccion; establecer AZURE_AUTH_ENABLED=true.");
+        }
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -69,7 +78,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Aforo interno: solo con identidad (ticket-service reenvia el JWT del usuario)
+                        // Aforo interno: identidad (JWT del usuario reenviado por ticket-service)
+                        // + token interno X-Internal-Token validado por InternalApiTokenFilter.
                         .requestMatchers(HttpMethod.PUT, "/api/funciones/*/descontar", "/api/funciones/*/reponer")
                         .authenticated()
                         // Lecturas publicas: cartelera, detalle, disponibilidad, portadas
@@ -117,6 +127,9 @@ public class SecurityConfig {
             // Modo demo: filtro no-bean, anadido solo a la cadena de seguridad
             http.addFilterBefore(new DevMockAuthFilter(azureEnabled), UsernamePasswordAuthenticationFilter.class);
         }
+
+        // InternalApiTokenFilter es @Component: Spring Boot lo registra como servlet filter
+        // (solo aplica a /descontar|/reponer via shouldNotFilter); no duplicar en la cadena.
 
         return http.build();
     }
