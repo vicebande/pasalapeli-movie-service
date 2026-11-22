@@ -1,4 +1,4 @@
-name: Deploy movie-service a EC2
+name: Deploy movie-service a EKS
 
 on:
   push:
@@ -21,52 +21,50 @@ jobs:
         with:
           args: -Dsonar.qualitygate.wait=true
 
-  deploy:
-    name: Build y deploy a EC2
+  terraform:
+    name: Terraform Infrastructure
     needs: quality
     runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      TF_VAR_environment_name: dev
+      TF_VAR_domain_name: pasalapeli-movie-service
     steps:
-      - name: Desplegar movie-service via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          command_timeout: 30m
-          script: |
-            set -euo pipefail
-            COMPOSE_DIR=/opt/pasalapeli/pasalapeli-database
-            SERVICE=movie-service
+          terraform_version: 1.6.0
 
-            # Lock compartido entre los deploys que corren sobre EC2-APPS:
-            # serializa docker compose up para evitar conflictos de contenedor.
-            LOCKFILE=/tmp/pasalapeli-deploy.lock
-            exec 9>"$LOCKFILE"
-            flock -x -w 1800 9
-            echo "==> Lock adquirido $LOCKFILE (despliegue "$SERVICE")"
+      - name: Install yq
+        uses: elementalcy/tool@v1
+        with:
+          name: yq
+          version: latest
 
-            echo "==> Pulling latest code"
-            cd /opt/pasalapeli/pasalapeli-movie-service
-            git fetch --prune origin
-            git reset --hard origin/main
+      - name: Terraform Format
+        run: terraform fmt -check -recursive
 
-            echo "==> Building and restarting $SERVICE"
-            cd "$COMPOSE_DIR"
-            docker compose -f docker-compose.yml up -d --build "$SERVICE"
+      - name: Terraform Init
+        run: terraform init -backend=true -backend-config="bucket=pasalapeli-tfstate" -backend-config="key=pasalapeli-movie-service/terraform.tfstate" -backend-config="region=us-east-1" -input=false
 
-            echo "==> Waiting for health check..."
-            for i in $(seq 1 30); do
-              STATUS=$(docker inspect --format '{{.State.Health.Status}}' pasalapeli-movie 2>/dev/null || echo "starting")
-              echo "    [$i/30] Status: $STATUS"
-              if [ "$STATUS" = "healthy" ]; then
-                echo "==> movie-service HEALTHY"
-                break
-              fi
-              sleep 5
-            done
-            if [ "$STATUS" != "healthy" ]; then
-              echo "ERROR: $SERVICE no quedo healthy tras 150s" >&2
-              exit 1
-            fi
-            docker compose -f docker-compose.yml ps "$SERVICE"
-            flock -u 9
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -no-color
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve
+
+      - name: Deploy to EKS
+        if: success()
+        run: |
+          echo "🚀 Deploying movie-service to EKS..."
+          aws eks update-kubeconfig --name pasalapeli-cluster --region us-east-1
+          kubectl apply -f k8s-manifests/
