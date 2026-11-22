@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pasalapeli-movie-service
+  namespace: default
+  labels:
+    app: pasalapeli-movie-service
+spec:
+  selector:
+    app: pasalapeli-movie-service
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+  type: ClusterIP

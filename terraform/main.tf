@@ -1,23 +1,4 @@
-# Main Terraform file for EKS migration
-# Agrupa todos los recursos de la infraestructura AWS
-
-provider "aws" {
-  region = "us-east-1"
-}
-
-# Versión de Kubernetes
-terraform {
-  required_version = ">= 1.5.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-    
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.0"
-    }
-  }
-}
+# Main Terraform file for pasalapeli-movie-service
+# Este repositorio solo despliega su carga de trabajo en EKS (kubectl).
+# La infraestructura compartida (VPC, EKS, RDS, S3, SNS, SQS, Kinesis)
+# es propiedad de pasalapeli-database.

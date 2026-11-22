@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pasalapeli-movie-service
+  namespace: default
+  labels:
+    app: pasalapeli-movie-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pasalapeli-movie-service
+  template:
+    metadata:
+      labels:
+        app: pasalapeli-movie-service
+    spec:
+      containers:
+        - name: movie-service
+          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/pasalapeli-images/movie-service:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ENVIRONMENT
+              value: "dev"
+          imagePullPolicy: IfNotPresent
